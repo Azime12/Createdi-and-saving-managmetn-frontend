@@ -1,0 +1,42 @@
+:root {
+    --error-color: #ff4d4d;
+  }
+  
+  .input-container {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+  }
+  
+  /* Base Input Styling */
+  .custom-input {
+    width: 100%;
+    height: 43px; /* Set a fixed height */
+    padding: 8px; /* Adjust padding for internal space */
+    border: 0.5px solid var(--focus-color);
+    border-radius: 7px;
+    outline: none;
+    font-size: 16px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  
+  
+  /* Focus State (Uses dynamic variable) */
+  .custom-input:focus {
+    border-color: var(--focus-color);  /* Ensures border remains consistent */
+    box-shadow: 0 0 4px var(--focus-color); /* Adds glow effect */
+  }
+  
+  /* Error State */
+  .custom-input.error {
+    border-color: var(--error-color);
+    box-shadow: 0 0 1px var(--error-color);
+  }
+  
+  .error-text {
+    color: var(--error-color);
+    font-size: 13px;
+  }
+  
