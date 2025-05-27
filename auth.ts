@@ -2,7 +2,6 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
-import type { JWT } from "next-auth/jwt";
 import { BASE_URL } from "./constants/apiConfig";
 
 interface ExtendedUser {
@@ -36,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.token || !credentials?.user || typeof credentials.user !== "string") {
           throw new Error("Invalid token or user data");
         }
-        
+
         try {
           const user: ExtendedUser = JSON.parse(credentials.user);
           return {
@@ -61,37 +60,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, user, account }) {
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && account?.id_token) {
+        try {
+          const res = await fetch(`${BASE_URL}/auth/social-login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${account.id_token}`,
+            },
+            body: JSON.stringify({ provider: "google", idToken: account.id_token }),
+          });
+
+          if (!res.ok) {
+            console.error("❌ Google signIn API error:", await res.text());
+            return false;
+          }
+
+          const result = await res.json();
+
+          // Attach user info temporarily to be stored in JWT later
+          user.id = result.user.id;
+          user.name = result.user.name;
+          user.email = result.user.email;
+          user.image = result.user.image;
+          user.roles = result.user.roles;
+          user.accessToken = result.token;
+          user.loginBy = "google";
+
+          return true;
+        } catch (err) {
+          console.error("🔥 Error during Google social-login:", err);
+          return false;
+        }
+      }
+
+      return true;
+    },
+
+    async jwt({ token, user }) {
       if (user) {
         token.user = user;
-        token.accessToken = user.accessToken || token.accessToken;
-
-        if (account?.provider === "google" && account.id_token) {
-          try {
-            const response = await fetch(`${BASE_URL}/auth/social-login`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${account.id_token}`,
-              },
-              body: JSON.stringify({ provider: "google", idToken: account.id_token }),
-            });
-
-            if (response.ok) {
-              const responseData = await response.json();
-              token.user = {
-                ...responseData.user,
-                accessToken: responseData.token,
-              };
-              token.accessToken = responseData.token;
-            } else {
-              console.error("API login failed:", await response.json());
-            }
-          } catch (error) {
-            console.error("Error calling API:", error);
-          }
-        }
+        token.accessToken = user.accessToken;
       }
       return token;
     },
@@ -101,41 +113,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.accessToken = token.accessToken;
       return session;
     },
-
-    async signIn({ user, account }) {
-      if (account?.provider === "google" && account?.id_token) {
-        try {
-          const response = await fetch(`${BASE_URL}/api/auth/social-login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${account.id_token}`,
-            },
-            body: JSON.stringify({ provider: "google", idToken: account.id_token }),
-          });
-
-          if (!response.ok) {
-            console.error("User registration failed with status:", response.status);
-            console.error("Error details:", await response.json());
-            return false;
-          }
-
-          const responseData = await response.json();
-          user = {
-            ...responseData.user,
-            token: responseData.token,
-          };
-
-          return true;
-        } catch (error) {
-          console.error("Error during sign-in:", error);
-          return false;
-        }
-      }
-      return true;
-    },
   },
+
   pages: {
     signIn: "/auth/login",
   },
+
+  // Optional: enable debug logging
+  // debug: true,
 } satisfies NextAuthConfig);

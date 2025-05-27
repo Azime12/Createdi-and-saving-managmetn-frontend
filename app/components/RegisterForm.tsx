@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import CInput from "@/app/components/CInput";
-import { useCreateUsersMutation } from "@/redux/api/userApiSlice";
+import { useCreateUserMutation } from "@/redux/api/userApiSlice";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Button from "@/app/components/button";
@@ -15,7 +15,7 @@ import Link from "next/link";
 
 const RegisterForm = () => {
   const [primaryColor, setPrimaryColor] = useState<string>("#0ca197");
-  const [createUser, { isLoading: isCreating, isError, error }] = useCreateUsersMutation();
+  const [createUser, { isLoading: isCreating, isError, error }] = useCreateUserMutation();
   const router = useRouter();
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [showPasswords, setShowPasswords] = useState({

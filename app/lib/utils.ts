@@ -2,6 +2,7 @@ import { Revenue } from './definitions';
 export function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
+import { Permission, Action, AppSubject } from '../lib/ability';
 
 // Helper to convert hex to RGB
 export function hexToRgb(hex: string) {
@@ -91,3 +92,59 @@ export const generatePagination = (currentPage: number, totalPages: number) => {
     totalPages,
   ];
 };
+
+// app/utils/permissionsUtil.ts
+
+export const DEFAULT_PERMISSIONS: Permission[] = [
+  { action: 'view', subject: 'dashboard' },
+  { action: 'view', subject: 'profile' },
+];
+
+export function convertBackendPermission(permissionString: string): Permission {
+  const actionMap: Record<string, Action> = {
+    add: 'create',
+    create: 'create',
+    edit: 'update',
+    update: 'update',
+    delete: 'delete',
+    remove: 'delete',
+    view: 'view',
+    assign: 'manage',
+    detail: 'view',
+  };
+
+  const subjectMap: Record<string, AppSubject> = {
+    user: 'user',
+    role: 'roles',
+    permission: 'permissions',
+    notification: 'notifications',
+    saving: 'saving',
+    loan: 'loans',
+    branch: 'branches',
+    dashboard: 'dashboard',
+    setting: 'settings',
+    invoice: 'invoices',
+  };
+
+  const conditionalPermissions: Record<string, any> = {
+    assign_roles_to_users: { canAssignRoles: true },
+    assign_permission_to_roles: { canManagePermissions: true },
+  };
+
+  const parts = permissionString.split('_');
+  let actionPart = parts[0];
+  let subjectPart = parts[parts.length - 1];
+
+  if (permissionString === 'remove_permission') {
+    actionPart = 'delete';
+    subjectPart = 'permissions';
+  }
+
+  const action = actionMap[actionPart] || 'view';
+  const subject = subjectMap[subjectPart] || subjectPart;
+  const conditions = conditionalPermissions[permissionString];
+
+  return conditions
+    ? { action, subject, conditions }
+    : { action, subject };
+}

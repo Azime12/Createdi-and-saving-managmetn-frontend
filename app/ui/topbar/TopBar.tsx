@@ -130,7 +130,7 @@ export function TopBar() {
 
       <div className="flex items-center gap-3 sm:gap-5">
         {/* Notifications with badge */}
-        <div className="relative">
+        {/* <div className="relative">
           <button 
             className={cn(
               "p-2 rounded-full transition-all relative",
@@ -166,7 +166,7 @@ export function TopBar() {
               </>
             )}
           </button>
-        </div>
+        </div> */}
 
         {/* User profile dropdown */}
         <div className="relative">
@@ -251,7 +251,7 @@ export function TopBar() {
                     <User className="mr-3 h-4 w-4 flex-shrink-0" />
                     Profile
                   </Link>
-                  <Link
+                  {/* <Link
                     href="/settings"
                     className={cn(
                       "flex items-center px-4 py-2 text-sm w-full text-left",
@@ -263,7 +263,7 @@ export function TopBar() {
                   >
                     <Settings className="mr-3 h-4 w-4 flex-shrink-0" />
                     Settings
-                  </Link>
+                  </Link> */}
                 </div>
                 
                 <div className="py-1">
