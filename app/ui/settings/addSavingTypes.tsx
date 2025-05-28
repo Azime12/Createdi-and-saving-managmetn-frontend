@@ -9,6 +9,7 @@ import {
 useUpdateLoanTypeMutation} from '@/redux/api/loanTypeApiSlice';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+import  {useCreateSavingTypesMutation,useUpdateSavingTypesMutation} from "@/redux/api/settingApiSlice"
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().required('Saving type name is required'),
@@ -51,8 +52,8 @@ interface AddSavingTypesProps {
 
 function AddSavingTypes({ initialData, onClose,handleCloseModal, primaryColor = '#3b82f6' }: AddSavingTypesProps) {
   const isEditing = !!initialData;
-  const [createSavingType, { isLoading: isCreating }] = useCreateLoanTypeMutation();
-  const [updateSavingType, { isLoading: isUpdating }] = useUpdateLoanTypeMutation();
+  const [createSavingType, { isLoading: isCreating }] = useCreateSavingTypesMutation();
+  const [updateSavingType, { isLoading: isUpdating }] = useUpdateSavingTypesMutation();
   const isLoading = isCreating || isUpdating;
 
   const formik = useFormik({

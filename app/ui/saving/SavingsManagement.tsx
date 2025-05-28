@@ -14,10 +14,10 @@ const SavingsManagement = () => {
 
   const tabs = [
     { id: 'accounts', icon: FiPieChart, label: 'Accounts' },
-    { id: 'transactions', icon: FiDollarSign, label: 'Transactions' },
-    { id: 'goals', icon: FiTrendingUp, label: 'Savings Goals' },
-    { id: 'interest', icon: FiPercent, label: 'Interest' },
-    { id: 'reports', icon: FiDownload, label: 'Reports' }
+    // { id: 'transactions', icon: FiDollarSign, label: 'Transactions' },
+    // { id: 'goals', icon: FiTrendingUp, label: 'Savings Goals' },
+    // { id: 'interest', icon: FiPercent, label: 'Interest' },
+    // { id: 'reports', icon: FiDownload, label: 'Reports' }
   ];
 
   return (
@@ -57,10 +57,10 @@ const SavingsManagement = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {activeTab === 'accounts' && <AccountsTab />}
-        {activeTab === 'transactions' && <TransactionsTab />}
-        {activeTab === 'goals' && <GoalsTab />}
-        {activeTab === 'interest' && <InterestTab />}
-        {activeTab === 'reports' && <ReportsTab />}
+        {/* {activeTab === 'transactions' && <TransactionsTab />} */}
+        {/* {activeTab === 'goals' && <GoalsTab />} */}
+        {/* {activeTab === 'interest' && <InterestTab />} */}
+        {/* {activeTab === 'reports' && <ReportsTab />} */}
       </div>
     </div>
   );

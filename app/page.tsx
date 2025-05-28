@@ -22,99 +22,110 @@ import SignIn from "@/app/components/sign-in-resen";
   };
 
   // Reusable Footer Component
-  const Footer = ({ bgColor, textColor, iconColor, handleColorChangeFooter }: FooterProps) => {
-    return (
-      <footer className="py-8 mt-16" style={{ backgroundColor: bgColor }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {/* Links Section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
-                Quick Links
-              </h3>
-              <ul className="space-y-2">
-                {["Home", "About Us", "Services", "Contact"].map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
-                      className="hover:text-teal-500 transition-colors"
-                      style={{ color: textColor }}
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
-            {/* Contact Section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
-                Contact Us
-              </h3>
-              <ul className="space-y-2">
-                <li style={{ color: textColor }}>1234 Financial St., City, Country</li>
-                <li style={{ color: textColor }}>Email: support@yourdomain.com</li>
-                <li style={{ color: textColor }}>Phone: +123 456 7890</li>
-              </ul>
-            </div>
 
-            {/* Social Media Section */}
-            <div className="flex flex-col items-center md:items-start">
-              <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
-                Follow Us
-              </h3>
-              <div className="flex space-x-6">
-                {[
-                  { icon: FaFacebook, url: "https://www.facebook.com" },
-                  { icon: FaTwitter, url: "https://www.twitter.com" },
-                  { icon: FaInstagram, url: "https://www.instagram.com" },
-                  { icon: FaLinkedin, url: "https://www.linkedin.com" },
-                ].map(({ icon: Icon, url }) => (
+const Footer = ({ bgColor, textColor, iconColor, handleColorChangeFooter }: FooterProps) => {
+  return (
+    <footer className="py-8 mt-16" style={{ backgroundColor: bgColor }}>
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+          {/* Links Section */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
+              Quick Links
+            </h3>
+            <ul className="space-y-2">
+              {["Home", "About Ethiopia", "Services", "Contact"].map((link) => (
+                <li key={link}>
                   <a
-                    key={url}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="#"
                     className="hover:text-teal-500 transition-colors"
+                    style={{ color: textColor }}
                   >
-                    <Icon className="w-6 h-6" style={{ color: iconColor }} />
+                    {link}
                   </a>
-                ))}
-              </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact Section */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
+              Contact Us
+            </h3>
+            <ul className="space-y-2">
+              <li style={{ color: textColor }}>
+                Bole Road, Addis Ababa, Ethiopia
+              </li>
+              <li style={{ color: textColor }}>
+                Email: support@ethiopiaexample.com
+              </li>
+              <li style={{ color: textColor }}>
+                Phone: +251 911 123 456
+              </li>
+            </ul>
+          </div>
+
+          {/* Social Media Section */}
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>
+              Follow Us
+            </h3>
+            <div className="flex space-x-6">
+              {[
+                { icon: FaFacebook, url: "https://www.facebook.com/EthiopiaPage" },
+                { icon: FaTwitter, url: "https://twitter.com/EthiopiaGov" },
+                { icon: FaInstagram, url: "https://www.instagram.com/visitethiopia" },
+                { icon: FaLinkedin, url: "https://www.linkedin.com/company/ethiopia-development" },
+              ].map(({ icon: Icon, url }) => (
+                <a
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-teal-500 transition-colors"
+                >
+                  <Icon className="w-6 h-6" style={{ color: iconColor }} />
+                </a>
+              ))}
             </div>
-          </div>
-
-          {/* Footer Bottom Section */}
-          <div className="border-t border-gray-700 pt-6 mt-8 text-center">
-            <p className="text-sm" style={{ color: textColor }}>
-              &copy; 2025 Your Company. All rights reserved.
-            </p>
-          </div>
-
-          <div className="mt-8 flex gap-4 justify-center">
-            {[
-              { label: "Text Color", value: textColor, type: "text" },
-              { label: "Background Color", value: bgColor, type: "bg" },
-              { label: "Icon Color", value: iconColor, type: "icon" },
-            ].map(({ label, value, type }) => (
-              <div key={type}>
-                <label className="text-white font-medium">{label}:</label>
-                <input
-                  type="color"
-                  value={value}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleColorChangeFooter(type, e.target.value)
-                  }
-                  className="ml-2 cursor-pointer"
-                />
-              </div>
-            ))}
           </div>
         </div>
-      </footer>
-    );
-  };
+
+        {/* Footer Bottom Section */}
+        <div className="border-t border-gray-700 pt-6 mt-8 text-center">
+          <p className="text-sm" style={{ color: textColor }}>
+            &copy; 2025 Ethiopian Tech Solutions. All rights reserved.
+          </p>
+        </div>
+
+        {/* Color Picker Controls */}
+        <div className="mt-8 flex gap-4 justify-center">
+          {[
+            { label: "Text Color", value: textColor, type: "text" },
+            { label: "Background Color", value: bgColor, type: "bg" },
+            { label: "Icon Color", value: iconColor, type: "icon" },
+          ].map(({ label, value, type }) => (
+            <div key={type}>
+              <label className="text-white font-medium">{label}:</label>
+              <input
+                type="color"
+                value={value}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  handleColorChangeFooter(type, e.target.value)
+                }
+                className="ml-2 cursor-pointer"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+
 
   export default function HomePage() {
     const [primaryColor, setPrimaryColor] = useState<string>("#14b8a6");

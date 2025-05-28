@@ -31,6 +31,6 @@
     ".next/types/**/*.ts",
     "app/lib/placeholder-data.ts",
     "scripts/seed.js"
-, "app/(sibar_route)/dashboard/invoices/create/page.tsx", "app/components/sidebar/Si", "app/(sibar_route)/pro"  ],
+, "app/(sibar_route)/dashboard/invoices/create/page.tsx", "app/components/sidebar/Si", "app/(sibar_route)/pro", "app/lib/permissionUtils.js", "components/ProtectedRoute.tsx", "app/(credecials)/auth/verify-email/VeriyEmil.jsx"  ],
   "exclude": ["node_modules"]
 }

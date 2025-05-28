@@ -23,12 +23,11 @@ export const loanTypeApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: [{ type: "LoanType", id: "LIST" }],
     }),
-
     // Update an existing loan type
     updateLoanType: builder.mutation<LoanType, { id: string | number; data: Partial<LoanType> }>({
       query: ({ id, data }) => ({
         url: `/loan-types/${id}`,
-        method: "PATCH",
+        method: "PUT",
         body: data,
       }),
       invalidatesTags: (result, error, { id }) => [

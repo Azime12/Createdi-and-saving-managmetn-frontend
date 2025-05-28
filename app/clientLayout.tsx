@@ -1,43 +1,71 @@
 // src/app/ClientLayout.tsx
 'use client';
-import { SessionProvider } from 'next-auth/react';
-import { Provider } from 'react-redux';
+import { SessionProvider, useSession } from 'next-auth/react';
+import { Provider, useDispatch } from 'react-redux';
 import store from '../redux/store';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import { useEffect } from 'react';
+import { setToken, clearToken } from '../redux/slice/authSlice';
 
-// Setup listeners for refetch behaviors
-setupListeners(store.dispatch);
+const logDebug = (message: string) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[ClientLayout] ${message}`);
+  }
+};
+
+function TokenInitializer({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    logDebug('Checking initial session...');
+    if (session?.accessToken) {
+      logDebug('Initial token found, updating store...');
+      dispatch(setToken(session.accessToken));
+    } else {
+      logDebug('No initial token found');
+      dispatch(clearToken());
+    }
+  }, [session, dispatch]);
+
+  useEffect(() => {
+    logDebug('Setting up RTK Query listeners...');
+    const unsubscribe = setupListeners(store.dispatch);
+    return () => {
+      logDebug('Cleaning up RTK Query listeners...');
+      unsubscribe();
+    };
+  }, []);
+
+  return <>{children}</>;
+}
 
 export default function ClientLayout({ 
   children,
-  session // Make sure to pass session from page props
+  session 
 }: { 
   children: React.ReactNode,
   session?: any 
 }) {
-  useEffect(() => {
-    // Add any initialization logic here
-    return () => {
-      // Cleanup logic if necessary
-    };
-  }, []);
-
+  logDebug('Rendering ClientLayout...');
+  
   return (
     <SessionProvider 
       session={session}
       refetchOnWindowFocus={true}
-      refetchInterval={60 * 5} // 5 minutes
+      refetchInterval={60 * 5}
     >
       <Provider store={store}>
-        {children}
-        <ToastContainer 
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar
-        />
+        <TokenInitializer>
+          {children}
+          <ToastContainer 
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar
+          />
+        </TokenInitializer>
       </Provider>
     </SessionProvider>
   );

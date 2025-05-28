@@ -65,7 +65,7 @@ const AccountsTab = ({ formatCurrency, primaryColor }: AccountsTabProps) => {
             </div>
           )}
 
-          {accounts.map((account: Account) => {
+          {accounts?.data?.map((account: Account) => {
             const balance = parseFloat(account.balance) || 0;
             const lastFourDigits = account.AccountNumber?.accountNumber?.slice(-4) ?? '••••';
 
@@ -85,7 +85,7 @@ const AccountsTab = ({ formatCurrency, primaryColor }: AccountsTabProps) => {
                 </div>
 
                 <div className="flex space-x-4 mt-3">
-                  <button
+                  {/* <button
                     onClick={() => handleOpenDeposit(account.id)}
                     className="px-4 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-opacity-80 transition"
                     style={{ backgroundColor: primaryColor }}
@@ -97,7 +97,7 @@ const AccountsTab = ({ formatCurrency, primaryColor }: AccountsTabProps) => {
                     className="px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-opacity-80 transition"
                   >
                     Withdraw
-                  </button>
+                  </button> */}
                 </div>
               </div>
             );
@@ -115,7 +115,7 @@ const AccountsTab = ({ formatCurrency, primaryColor }: AccountsTabProps) => {
             </div>
           )}
 
-          <button
+          {/* <button
             onClick={handleOpenModal}
             className="w-full mt-6 py-3 flex items-center justify-center text-white font-medium rounded-lg transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2"
             style={{
@@ -125,7 +125,7 @@ const AccountsTab = ({ formatCurrency, primaryColor }: AccountsTabProps) => {
           >
             <FiPlus className="mr-2" />
             Open New Account
-          </button>
+          </button> */}
         </div>
       </div>
 

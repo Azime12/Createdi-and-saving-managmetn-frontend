@@ -1,49 +1,26 @@
-import { NextAuthConfig } from "next-auth";
+// auth.config.ts
+import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
   pages: {
     signIn: "/auth/login",
   },
   callbacks: {
-    async authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnProtectedRoute = [
-        "/dashboard",
-        "/profile",
-        "/settings",
-      ].some(path => nextUrl.pathname.startsWith(path));
-
-      const isOnAuthRoute = [
+      const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
+      const isOnAuthPage = [
         "/auth/login",
         "/auth/register",
-        "/auth/request-reset",
-        "/"
       ].includes(nextUrl.pathname);
 
-      if (
-        nextUrl.pathname.startsWith("/_next/") ||
-        nextUrl.pathname.startsWith("/api/") ||
-        nextUrl.pathname.includes(".")
-      ) {
-        return true;
+      if (isOnDashboard) {
+        if (isLoggedIn) return true;
+        return false; // Redirect unauthenticated users to login page
+      } else if (isLoggedIn && isOnAuthPage) {
+        return Response.redirect(new URL('/dashboard', nextUrl));
       }
-
-      if (isLoggedIn && isOnAuthRoute) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
-      }
-
-      if (!isLoggedIn && isOnProtectedRoute) {
-        return Response.redirect(new URL("/auth/login", nextUrl));
-      }
-
       return true;
-    },
-    async session({ session, token }) {
-      if (token.user) {
-        session.user = token.user;
-        session.accessToken = token.accessToken;
-      }
-      return session;
     },
     async jwt({ token, user }) {
       if (user) {
@@ -52,6 +29,13 @@ export const authConfig = {
       }
       return token;
     },
+    async session({ session, token }) {
+      if (token?.user) {
+        session.user = token.user;
+        session.accessToken = token.accessToken;
+      }
+      return session;
+    },
   },
-  providers: [],
+  providers: [], // Add your providers here
 } satisfies NextAuthConfig;

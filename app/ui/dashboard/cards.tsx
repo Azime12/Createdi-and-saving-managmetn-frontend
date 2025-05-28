@@ -1,35 +1,47 @@
 import {
-  BanknotesIcon,
+  CurrencyDollarIcon,
   ClockIcon,
   UserGroupIcon,
-  InboxIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
-import { lusitana } from '@/app/ui/fonts';
-import { fetchCardData } from '@/app/lib/data';
+import { abyssinicaSIL } from '@/app/ui/fonts';
 
 const iconMap = {
-  collected: BanknotesIcon,
-  customers: UserGroupIcon,
+  collected: CurrencyDollarIcon,
   pending: ClockIcon,
-  invoices: InboxIcon,
+  loans: DocumentTextIcon,
+  customers: UserGroupIcon,
 };
-const {
-  numberOfInvoices,
-  numberOfCustomers,
-  totalPaidInvoices,
-  totalPendingInvoices,
-} = await fetchCardData();
-export default async function CardWrapper() {
+
+// Static data for Ethiopian credit union
+const cardData = {
+  totalCollected: 1254300, // in ETB
+  totalPending: 584200,    // in ETB
+  activeLoans: 132,
+  members: 84,
+};
+
+export default function CardWrapper() {
   return (
     <>
-      {/* NOTE: Uncomment this code in Chapter 9 */}
-
-      <Card title="Collected" value={totalPaidInvoices} type="collected" />
-      <Card title="Pending" value={totalPendingInvoices} type="pending" />
-      <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
+      <Card 
+        title="ተሰብስበዋል" 
+        value={`${cardData.totalCollected.toLocaleString()} ETB`} 
+        type="collected" 
+      />
+      <Card 
+        title="በጥበቃ ላይ" 
+        value={`${cardData.totalPending.toLocaleString()} ETB`} 
+        type="pending" 
+      />
+      <Card 
+        title="ንቁ የብድር ዝርዝር" 
+        value={cardData.activeLoans} 
+        type="loans" 
+      />
       <Card
-        title="Total Customers"
-        value={numberOfCustomers}
+        title="የአባላት ብዛት"
+        value={cardData.members}
         type="customers"
       />
     </>
@@ -43,7 +55,7 @@ export function Card({
 }: {
   title: string;
   value: number | string;
-  type: 'invoices' | 'customers' | 'pending' | 'collected';
+  type: 'loans' | 'customers' | 'pending' | 'collected';
 }) {
   const Icon = iconMap[type];
 
@@ -51,10 +63,10 @@ export function Card({
     <div className="rounded-xl bg-gray-50 p-2 shadow-sm">
       <div className="flex p-4">
         {Icon ? <Icon className="h-5 w-5 text-gray-700" /> : null}
-        <h3 className="ml-2 text-sm font-medium">{title}</h3>
+        <h3 className={`${abyssinicaSIL.className} ml-2 text-sm font-medium`}>{title}</h3>
       </div>
       <p
-        className={`${lusitana.className}
+        className={`${abyssinicaSIL.className}
           truncate rounded-xl bg-white px-4 py-8 text-center text-2xl`}
       >
         {value}

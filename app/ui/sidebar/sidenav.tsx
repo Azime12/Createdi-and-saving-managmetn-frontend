@@ -154,7 +154,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
             {expanded && session?.user && (
               <div className="flex-1 min-w-0 overflow-hidden">
                 <h4 className="font-semibold whitespace-nowrap truncate text-white">
-                  {session.user.name || "User"}
+                  {session.user?.firstName +" "+session?.user?.lastName +"(" +"("+ session?.user?.role|| "User"}
                 </h4>
                 <span className="text-xs text-white/80 truncate block">
                   {session.user.email}

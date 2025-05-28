@@ -43,7 +43,7 @@ const UserProfileDashboard = () => {
   const tabs = [
     { id: 'overview', icon: <FiUser />, label: 'Overview' },
     { id: 'accounts', icon: <FiDollarSign />, label: 'Accounts' },
-    { id: 'transactions', icon: <FiActivity />, label: 'Transactions' },
+    // { id: 'transactions', icon: <FiActivity />, label: 'Transactions' },
     { id: 'loans', icon: <FiHome />, label: 'Loans' },
  
  ]
@@ -80,7 +80,7 @@ const UserProfileDashboard = () => {
         accounts: [],
         cards: [],
         loans: [],
-        transactions: [],
+        // transactions: [],
         wishlist: [],
       });
       setLoading(false);
@@ -175,9 +175,7 @@ const UserProfileDashboard = () => {
           {activeTab === 'accounts' && (
             <AccountsTab                   formatCurrency={formatCurrency} primaryColor={primaryColor} />
           )}
-          {activeTab === 'transactions' && (
-            <TransactionsTab userData={userData} formatCurrency={formatCurrency} formatDate={formatDate} />
-          )}
+         
         
           {activeTab === 'loans' && (
             <LoansTab userData={userData} formatCurrency={formatCurrency} formatDate={formatDate} primaryColor={primaryColor} />

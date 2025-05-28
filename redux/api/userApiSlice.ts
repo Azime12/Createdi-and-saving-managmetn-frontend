@@ -17,14 +17,14 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         { type: 'User', id: `SEARCH-${field}-${value}` },
       ],
     }),
-  assignRoleTouser: builder.mutation({
-      query: (roleData) => ({
-        url: '/users/assign-rolt-to-user',
-        method: 'POST',
-        body: roleData,
-      }),
-      invalidatesTags: [{ type: 'User', id: 'LIST' }],
-    }),
+    assignRoleTouser: builder.mutation<{message: string}, {userId: string; roleName: string}>({
+  query: (body) => ({
+    url: '/users/assign-rolt-to-user',
+    method: 'POST',
+    body
+  }),
+  invalidatesTags: ['User']
+}),
     createUser: builder.mutation({
       query: (newUser) => ({
         url: '/auth/register',

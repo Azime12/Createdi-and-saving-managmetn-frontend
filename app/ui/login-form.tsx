@@ -22,6 +22,7 @@ import {
   getContrastColor,
   getTextShadow 
 } from "@/app/lib/colorUtils";
+
 type LoginFormValues = {
   email: string;
   password: string;
@@ -41,6 +42,7 @@ const LoginForm = () => {
   }, []);
 
   const darkerColor = darkenColor(primaryColor, 20);
+  
   const formik = useFormik<LoginFormValues>({
     initialValues: {
       email: "",
@@ -59,24 +61,40 @@ const LoginForm = () => {
         const response = await login(values).unwrap();
         const { token, user } = response;
 
+        // Sign in with NextAuth credentials
         const signInResponse = await signIn("credentials", {
           redirect: false,
           token,
           user: JSON.stringify(user),
+          callbackUrl: "/dashboard" // Add callbackUrl for proper redirect
         });
 
         if (signInResponse?.error) {
           throw new Error(signInResponse.error);
         }
 
+        // Store auth data in localStorage (optional)
+        localStorage.setItem("auth", JSON.stringify({
+          token,
+          user
+        }));
+
         toast.success("Welcome back! Redirecting to dashboard...", {
           position: "top-center",
           icon: <FaUserShield style={{ color: primaryColor }} />,
         });
-        router.push("/dashboard");
+
+        // Handle redirect based on signIn response
+        if (signInResponse?.url) {
+          router.push(signInResponse.url);
+        } else {
+          // Fallback redirect if URL not provided
+          router.push("/dashboard");
+        }
+
       } catch (error) {
         let errorMessage = "Login failed. Please try again.";
-
+        
         if ((error as any)?.data?.error) {
           errorMessage = (error as any).data.error;
         } else if (error instanceof Error) {
@@ -93,6 +111,7 @@ const LoginForm = () => {
       }
     },
   });
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100  p-4">

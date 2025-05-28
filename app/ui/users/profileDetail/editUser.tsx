@@ -46,11 +46,11 @@ const EditUserForm = ({ userData, onCloseModal, primaryColor }: EditUserFormProp
 
   const formik = useFormik({
     initialValues: {
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      phoneNumber: userData.phoneNumber,
-      roleId: userData.role?.id || '',
+      firstName: userData?.firstName,
+      lastName: userData?.lastName,
+      email: userData?.email,
+      phoneNumber: userData?.phoneNumber,
+      roleId: userData?.role?.id || '',
     },
     enableReinitialize: true,
     validationSchema,
@@ -79,6 +79,7 @@ const EditUserForm = ({ userData, onCloseModal, primaryColor }: EditUserFormProp
       }
     },
   });
+  console.log("suer suer skdfDAta",userData)
 
   // Prepare role options
   const roleOptions = roles?.roles?.map((role: any) => role.name) || [];

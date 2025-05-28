@@ -2,19 +2,53 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import Image from 'next/image';
 import { lusitana } from '@/app/ui/fonts';
-import { LatestInvoice } from '@/app/lib/definitions';
-import { fetchLatestInvoices } from '@/app/lib/data';
 
-export default async function LatestInvoices(){ 
-const latestInvoices= await fetchLatestInvoices();
+// Static data for latest loan applications
+const latestInvoices = [
+  {
+    id: 1,
+    name: 'John Smith',
+    email: 'john@example.com',
+    amount: '$2,500',
+    image_url: '/customers/john-smith.png',
+  },
+  {
+    id: 2,
+    name: 'Sarah Johnson',
+    email: 'sarah@example.com',
+    amount: '$1,200',
+    image_url: '/customers/sarah-johnson.png',
+  },
+  {
+    id: 3,
+    name: 'Michael Brown',
+    email: 'michael@example.com',
+    amount: '$3,750',
+    image_url: '/customers/michael-brown.png',
+  },
+  {
+    id: 4,
+    name: 'Emily Davis',
+    email: 'emily@example.com',
+    amount: '$950',
+    image_url: '/customers/emily-davis.png',
+  },
+  {
+    id: 5,
+    name: 'Robert Wilson',
+    email: 'robert@example.com',
+    amount: '$5,200',
+    image_url: '/customers/robert-wilson.png',
+  },
+];
+
+export default async function LatestInvoices() {
   return (
     <div className="flex w-full flex-col md:col-span-4">
       <h2 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-        Latest Invoices
+        Recent Loan Applications
       </h2>
       <div className="flex grow flex-col justify-between rounded-xl bg-gray-50 p-4">
-        {/* NOTE: Uncomment this code in Chapter 7 */}
-
         <div className="bg-white px-6">
           {latestInvoices.map((invoice, i) => {
             return (

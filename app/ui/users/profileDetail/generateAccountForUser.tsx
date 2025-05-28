@@ -6,16 +6,16 @@ import { FaSave, FaSpinner, FaTimes } from 'react-icons/fa';
 import CInput from '@/app/components/CInput';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
-import CreateSavingAccount from './newAccount'; // ✅ Import modal
-import { useGetSavingsTypesQuery } from '@/redux/api/systemSettingApiSlice';
+import CreateSavingAccount from './newAccount';
 import { useGetAllSavingTypeQuery } from '@/redux/api/settingApiSlice';
-// import { useCreateAccountNumberMutation } from '@/redux/api/accountApiSlice';
+import { useCreateAccountNumberMutation } from '@/redux/api/accountApiSlice';
 
 interface GenerateAccountNumberProps {
   handleCloseModal: () => void;
   userId: string;
   primaryColor?: string;
   isOpen: boolean;
+  onAccountCreated?: (accountNumber: string) => void;
 }
 
 const validationSchema = Yup.object().shape({
@@ -35,13 +35,14 @@ function GenerateAccountNumber({
   userId,
   primaryColor = '#3b82f6',
   isOpen,
+  onAccountCreated,
 }: GenerateAccountNumberProps) {
-  // const [createAccountNumber, { isLoading }] = useCreateAccountNumberMutation();
+  const [createAccountNumber, { isLoading }] = useCreateAccountNumberMutation();
   const [isBrowser, setIsBrowser] = useState(false);
-  const [createdAccount, setCreatedAccount] = useState<any>(null);
+  const [createdAccount, setCreatedAccount] = useState<string | null>(null);
   const [showSavingModal, setShowSavingModal] = useState(false);
 
-  // const { data: savingTypes = [],isLoading:savingTypeLoading,isFetching} = useGetAllSavingTypeQuery(); // ✅ Fetch saving types
+  const { data: savingTypes = [] } = useGetAllSavingTypeQuery();
 
   useEffect(() => {
     setIsBrowser(true);
@@ -61,15 +62,24 @@ function GenerateAccountNumber({
       };
 
       try {
-        const response = 'lskd'
-        // await createAccountNumber(payload).unwrap();
-toast.success(response.message);
-setCreatedAccount(response.accountNumber); // <-- This is being passed to the next modal
-console.log('Account number response:', response.accountNumber); // Make sure it includes 'accountnumber'
-
-        setShowSavingModal(true); // ✅ Open CreateSavingAccount modal
+        const response = await createAccountNumber(payload).unwrap();
+        toast.success(response.message);
+        
+        // Ensure we're getting the account number from the response
+        const accountNumber = response.accountNumber?.accountNumber;
+        if (!accountNumber) {
+          throw new Error('Account number not found in response');
+        }
+        
+        setCreatedAccount(accountNumber);
+        setShowSavingModal(true);
+        
+        // Optional: Call the callback if provided
+        if (onAccountCreated) {
+          onAccountCreated(accountNumber);
+        }
       } catch (err: any) {
-        toast.error(err?.data?.message || 'Failed to create account number');
+        toast.error(err?.data?.message || err?.message || 'Failed to create account number');
       }
     },
   });
@@ -199,7 +209,10 @@ console.log('Account number response:', response.accountNumber); // Make sure it
       {createdAccount && showSavingModal && (
         <CreateSavingAccount
           isOpen={showSavingModal}
-          handleCloseModal={() => setShowSavingModal(false)}
+          handleCloseModal={() => {
+            setShowSavingModal(false);
+            handleCloseModal(); // Close both modals
+          }}
           userId={userId}
           createdAccountNumber={createdAccount}
           savingTypes={savingTypes}

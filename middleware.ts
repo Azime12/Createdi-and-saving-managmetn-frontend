@@ -1,68 +1,54 @@
-import { NextResponse, type NextRequest } from "next/server";
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
-import { routePermissions } from "@/app/lib/routePermissions";
-
-const { auth } = NextAuth(authConfig);
+// middleware.ts
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  const response = await auth(request);
+  const session = await auth();
+  const { pathname } = request.nextUrl;
 
-  // If NextAuth returned a redirect, respect it
-  if (response && (response.status === 302 || response.headers.get("location"))) {
-    return response;
-  }
+  // Protected routes
+  const protectedRoutes = [
+    { path: "/dashboard", roles: ["Admin", "LoanOfficer", "Accountant", "Customer"] },
+    { path: "/admin", roles: ["Admin"] },
+    { path: "/loans", roles: ["Admin", "LoanOfficer"] },
+    { path: "/accounting", roles: ["Admin", "Accountant"] }
+  ];
 
-  const pathname = request.nextUrl.pathname;
-
-  // Public route exceptions
+  // Skip middleware for static files and API routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.match(/\.(png|jpg|jpeg|svg|js|css|woff2?)$/)
+    pathname.startsWith("/static") ||
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
 
-  // Get session from cookies
-  const sessionToken = request.cookies.get("next-auth.session-token")?.value ||
-                      request.cookies.get("__Secure-next-auth.session-token")?.value;
-
-  if (!sessionToken) {
-    return response;
-  }
-
-  // Get the full session using the auth function
-  const session = await auth();
-
-  // Access control logic
-  const routeEntry = Object.entries(routePermissions).find(([prefix]) =>
-    pathname.startsWith(prefix)
-  );
-
-  if (routeEntry) {
-    const [, requiredPermissions] = routeEntry;
-
+  // Check protected routes
+  const routeConfig = protectedRoutes.find(route => pathname.startsWith(route.path));
+  
+  if (routeConfig) {
     if (!session?.user) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
     }
 
-    const userPermissions = session.user.roles?.flatMap(
-      (role: any) => role.permissions
-    ) || [];
-
-    const hasAccess = requiredPermissions.every(p => userPermissions.includes(p));
-
-    if (!hasAccess) {
-      return NextResponse.redirect(new URL("/403", request.url));
+    if (!routeConfig.roles.includes(session.user.role)) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
   }
 
-  return response;
+  // Redirect authenticated users from auth pages
+  const authRoutes = ["/auth/login", "/auth/register"];
+  if (session?.user && authRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|auth|403|404).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

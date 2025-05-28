@@ -1,6 +1,5 @@
-
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { 
@@ -9,73 +8,86 @@ import {
   FiAlertCircle 
 } from 'react-icons/fi';
 import { 
-  useCreateLoanApplicationMutation,  
+  useCreateLoanApplicationMutation,
 } from '@/redux/api/loanApplicationApiSlice';
-import { useGetAllLoanTypesQuery } from '@/redux/api/loanTypeApiSlice';
-import { useGetAllBranchesQuery } from '@/redux/api/branchApiSlice';
-import { useGetAccountsByUserIdQuery } from "@/redux/api/accountApiSlice";
 import { toast } from 'react-toastify';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import { useParams } from 'next/navigation';
+import { useGetAllBranchesQuery } from '@/redux/api/branchApiSlice';
+import { useGetAccountsByUserIdQuery } from '@/redux/api/accountApiSlice';
+import { useGetAllLoanTypesQuery } from '@/redux/api/loanTypeApiSlice';
 
 const loanApplicationSchema = Yup.object().shape({
   loanTypeId: Yup.string().required('Loan type is required'),
   principalAmount: Yup.number()
     .required('Amount is required')
-    .positive('Amount must be positive')
-    .min(1000, 'Minimum amount is $1,000')
-    .max(50000, 'Maximum amount is $50,000'),
+    .positive('Amount must be positive'),
   termMonths: Yup.number()
     .required('Term is required')
-    .integer('Term must be a whole number')
-    .min(3, 'Minimum term is 3 months')
-    .max(36, 'Maximum term is 36 months'),
+    .integer('Term must be a whole number'),
   purpose: Yup.string()
     .max(500, 'Purpose cannot exceed 500 characters'),
   branch_id: Yup.string().required('Branch selection is required'),
   saving_account_id: Yup.string(),
 });
 
-const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
- const params = useParams();
-  const userId = params?.id;  const { 
+const LoanApplicationForm = ({ onSuccess, primaryColor = '#3B82F6' }) => {
+  const params = useParams();
+  const userId = params?.id;
+  const [formReady, setFormReady] = useState(false);
+
+  // API Queries
+  const { 
     data: loanTypesData, 
     isLoading: loanTypesLoading,
-    error: loanTypesError
+    error: loanTypesError,
+    isSuccess: loanTypesSuccess
   } = useGetAllLoanTypesQuery();
  
   const { 
     data: branchesData, 
     isLoading: branchesLoading,
-    error: branchesError
+    error: branchesError,
+    isSuccess: branchesSuccess
   } = useGetAllBranchesQuery();
   
   const { 
     data: accountsData,
     isLoading: accountsLoading,
-    error: accountsError
+    error: accountsError,
+    isSuccess: accountsSuccess
   } = useGetAccountsByUserIdQuery(userId);
   
   const [createLoanApplication, { isLoading: isSubmitting }] = useCreateLoanApplicationMutation();
 
+  // Check if all data is loaded
+  useEffect(() => {
+    if (loanTypesSuccess && branchesSuccess && accountsSuccess) {
+      setFormReady(true);
+    }
+  }, [loanTypesSuccess, branchesSuccess, accountsSuccess]);
+
   // Handle API errors
   useEffect(() => {
     if (loanTypesError) {
-      toast.error('Failed to load loan types');
+      toast.error('Failed to load loan types. Please try again later.');
+      console.error('Loan types error:', loanTypesError);
     }
     if (branchesError) {
-      toast.error('Failed to load branches');
+      toast.error('Failed to load branches. Please try again later.');
+      console.error('Branches error:', branchesError);
     }
     if (accountsError) {
-      toast.error('Failed to load savings accounts');
+      toast.error('Failed to load accounts. You can still proceed without linking an account.');
+      console.error('Accounts error:', accountsError);
     }
   }, [loanTypesError, branchesError, accountsError]);
 
   // Extract data from API responses
   const loanTypes = loanTypesData?.data?.loanTypes || [];
-  const branches = branchesData?.data?.data || [];
-  const savingsAccounts = accountsData || []; // Adjusted to properly access the accounts data
-
+  const branches = branchesData?.data?.data || []; // Adjusted based on your branch API structure
+  const savingsAccounts = accountsData?.data || []; // Adjusted based on your accounts API
+// console.log("branches",branches)
   // Formik setup
   const formik = useFormik({
     initialValues: {
@@ -88,7 +100,7 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
       customerId: userId
     },
     validationSchema: loanApplicationSchema,
-    onSubmit: async (values, { resetForm }) => {
+    onSubmit: async (values, { resetForm, setSubmitting }) => {
       try {
         const payload = {
           customerId: userId,
@@ -100,26 +112,66 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
           saving_account_id: values.saving_account_id || null,
         };
 
+        console.log('Submitting payload:', payload); // Debug log
+
         const response = await createLoanApplication(payload).unwrap();
         
         toast.success('Loan application submitted successfully!');
         resetForm();
         if (onSuccess) onSuccess(response);
       } catch (error) {
-        toast.error(error.data?.message || 'Failed to submit application');
+        console.error('Submission error:', error);
+        toast.error(error.data?.message || 'Failed to submit application. Please check your details and try again.');
+      } finally {
+        setSubmitting(false);
       }
     },
   });
 
   // Get min/max values for the selected loan type
   const selectedLoanType = loanTypes.find(type => type.id === Number(formik.values.loanTypeId));
-  const minAmount = selectedLoanType?.min_amount ? parseFloat(selectedLoanType.min_amount) : 1000;
-  const maxAmount = selectedLoanType?.max_amount ? parseFloat(selectedLoanType.max_amount) : 50000;
-  const minTerm = selectedLoanType?.min_term ? parseInt(selectedLoanType.min_term) : 3;
-  const maxTerm = selectedLoanType?.max_term ? parseInt(selectedLoanType.max_term) : 36;
+  const minAmount = selectedLoanType?.min_amount ? parseFloat(selectedLoanType.min_amount) : 0;
+  const maxAmount = selectedLoanType?.max_amount ? parseFloat(selectedLoanType.max_amount) : Infinity;
+  const minTerm = selectedLoanType?.min_term ? parseInt(selectedLoanType.min_term) : 0;
+  const maxTerm = selectedLoanType?.max_term ? parseInt(selectedLoanType.max_term) : Infinity;
 
-  if (loanTypesLoading || branchesLoading || accountsLoading) {
-    return <LoadingSpinner />;
+  // Update validation based on selected loan type
+  useEffect(() => {
+    if (selectedLoanType) {
+      formik.setFieldValue('principalAmount', '');
+      formik.setFieldValue('termMonths', '');
+    }
+  }, [formik.values.loanTypeId]);
+
+  if (loanTypesLoading && branchesLoading && accountsLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+        <span className="ml-2">Loading form data...</span>
+      </div>
+    );
+  }
+
+  if (!formReady) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="text-center py-8">
+          <FiAlertCircle className="mx-auto text-4xl text-yellow-500" />
+          <h3 className="mt-4 text-lg font-medium">Loading Form Data</h3>
+          <p className="mt-2 text-sm text-gray-600">
+            We're preparing your loan application form. Please wait...
+          </p>
+          {(loanTypesError || branchesError || accountsError) && (
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Retry Loading
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -127,7 +179,7 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
       <h2 className="text-xl font-semibold mb-6">Apply for a New Loan</h2>
       
       <form onSubmit={formik.handleSubmit} className="space-y-6">
-        {/* Loan Type (Required) */}
+        {/* Loan Type */}
         <div>
           <label htmlFor="loanTypeId" className="block text-sm font-medium text-gray-700 mb-1">
             Loan Type *
@@ -159,10 +211,10 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
           )}
         </div>
 
-        {/* Principal Amount (Required) */}
+        {/* Principal Amount */}
         <div>
           <label htmlFor="principalAmount" className="block text-sm font-medium text-gray-700 mb-1">
-            Loan Amount *
+            Loan Amount * (Range: ${minAmount} - ${maxAmount})
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -177,12 +229,13 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
               value={formik.values.principalAmount}
               min={minAmount}
               max={maxAmount}
+              step="0.01"
               className={`block w-full pl-8 pr-3 py-2 border rounded-md shadow-sm focus:outline-none ${
                 formik.touched.principalAmount && formik.errors.principalAmount
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
               }`}
-              placeholder={`Between $${minAmount.toLocaleString()} and $${maxAmount.toLocaleString()}`}
+              placeholder={`Enter amount between $${minAmount} and $${maxAmount}`}
               required
             />
           </div>
@@ -193,10 +246,10 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
           )}
         </div>
 
-        {/* Term Months (Required) */}
+        {/* Term Months */}
         <div>
           <label htmlFor="termMonths" className="block text-sm font-medium text-gray-700 mb-1">
-            Loan Term (months) *
+            Loan Term (months) * (Range: {minTerm} - {maxTerm} months)
           </label>
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -216,7 +269,7 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
               }`}
-              placeholder={`Between ${minTerm} and ${maxTerm} months`}
+              placeholder={`Enter term between ${minTerm} and ${maxTerm} months`}
               required
             />
           </div>
@@ -227,7 +280,7 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
           )}
         </div>
 
-        {/* Purpose (Optional) */}
+        {/* Purpose */}
         <div>
           <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 mb-1">
             Purpose of Loan
@@ -253,43 +306,49 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
           )}
         </div>
 
-        {/* Branch Selection (Required) */}
-        <div>
-          <label htmlFor="branch_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Preferred Branch *
-          </label>
-          <select
-            id="branch_id"
-            name="branch_id"
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            value={formik.values.branch_id}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none ${
-              formik.touched.branch_id && formik.errors.branch_id
-                ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-            }`}
-            required
-          >
-            <option value="">Select a branch</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.branchName} - {branch.city}, {branch.state}
-              </option>
-            ))}
-          </select>
-          {formik.touched.branch_id && formik.errors.branch_id && (
-            <p className="mt-1 text-sm text-red-600 flex items-center">
-              <FiAlertCircle className="mr-1" /> {formik.errors.branch_id}
-            </p>
-          )}
-        </div>
+        {/* Branch Selection */}
+        {branchesLoading ? (
+  <p>Loading branches...</p>
+) : branchesError ? (
+  <p className="text-red-600">Failed to load branches</p>
+) : (
+  <div>
+    <label htmlFor="branch_id" className="block text-sm font-medium text-gray-700 mb-1">
+      Preferred Branch *
+    </label>
+    <select
+      id="branch_id"
+      name="branch_id"
+      onChange={formik.handleChange}
+      onBlur={formik.handleBlur}
+      value={formik.values.branch_id}
+      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none ${
+        formik.touched.branch_id && formik.errors.branch_id
+          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+      }`}
+      required
+    >
+      <option value="">Select a branch</option>
+      {branches.map((branch) => (
+        <option key={branch.id} value={branch.id}>
+          {branch.branchName} - {branch.city}, {branch.state}
+        </option>
+      ))}
+    </select>
+    {formik.touched.branch_id && formik.errors.branch_id && (
+      <p className="mt-1 text-sm text-red-600 flex items-center">
+        <FiAlertCircle className="mr-1" /> {formik.errors.branch_id}
+      </p>
+    )}
+  </div>
+)}
 
-        {/* Savings Account Selection (Optional) */}
-        {savingsAccounts?.length > 0 && (
+
+        {savingsAccounts.length > 0 && (
           <div>
             <label htmlFor="saving_account_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Link to Savings Account 
+              Link to Savings Account (Optional)
             </label>
             <select
               id="saving_account_id"
@@ -306,7 +365,7 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
               <option value="">Select a savings account (optional)</option>
               {savingsAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.AccountNumber?.accountNumber} - {account.SavingType?.name} (Balance: ${account.balance?.toLocaleString()})
+                  {account.AccountNumber?.accountNumber} - {account.SavingType?.name} (Balance: ${account.balance})
                 </option>
               ))}
             </select>
@@ -321,14 +380,14 @@ const LoanApplicationForm = ({  onSuccess, primaryColor }) => {
         <div>
           <button
             type="submit"
-            disabled={isSubmitting || !formik.isValid}
+            disabled={isSubmitting || !formik.isValid || !formik.dirty}
             className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              isSubmitting || !formik.isValid
+              isSubmitting || !formik.isValid || !formik.dirty
                 ? 'bg-gray-400 cursor-not-allowed'
-                : `hover:bg-${primaryColor}-700 focus:ring-${primaryColor}-500`
+                : `bg-${primaryColor}-600 hover:bg-${primaryColor}-700 focus:ring-${primaryColor}-500`
             }`}
             style={{
-              backgroundColor: isSubmitting || !formik.isValid 
+              backgroundColor: isSubmitting || !formik.isValid || !formik.dirty 
                 ? '#9CA3AF' 
                 : primaryColor
             }}

@@ -1,25 +1,29 @@
-import { apiSlice } from "./apiSlice";
+// src/redux/api/branchApiSlice.ts
+import { apiSlice } from './apiSlice';
+import { API_TAGS } from '../../constants/apiConfig';
 
 export const branchApiSlice = apiSlice.injectEndpoints({
-  overrideExisting: true, // ✅ Allow overriding existing endpoint names
+  overrideExisting: true,
   endpoints: (builder) => ({
-    // Branch endpoints
-    getAllBranches: builder.query<Branch[], void>({
-      query: () => '/branches',
+    // Branch endpoints with optimized caching
+getAllBranches:  builder.query({
+      query: () => `/branches/`,
+      providesTags: (result, error, id) => [{ type: API_TAGS.Branch, id }],
     }),
 
     getBranchById: builder.query({
-      query: (id: number | string) => `/branches/${id}`,
-      providesTags: (result, error, id) => [{ type: "Branch", id }],
+      query: (id) => `/branches/${id}`,
+      providesTags: (result, error, id) => [{ type: API_TAGS.Branch, id }],
     }),
 
     createBranch: builder.mutation({
       query: (newBranch) => ({
-        url: "/branches",
-        method: "POST",
+        url: '/branches',
+        method: 'POST',
         body: newBranch,
       }),
-      invalidatesTags: [{ type: "Branch", id: "LIST" }],
+      invalidatesTags: [{ type: API_TAGS.Branch, id: 'LIST' }],
+      extraOptions: { maxRetries: 0 }, // Prevent duplicate submissions
     }),
 
     updateBranch: builder.mutation({
@@ -28,59 +32,20 @@ export const branchApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body: payload,
       }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: API_TAGS.Branch, id },
+        { type: API_TAGS.Branch, id: 'LIST' },
+      ],
     }),
 
     deleteBranch: builder.mutation({
-      query: (id: number | string) => ({
+      query: (id) => ({
         url: `/branches/${id}`,
-        method: "DELETE",
+        method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [
-        { type: "Branch", id },
-        { type: "Branch", id: "LIST" },
-      ],
-    }),
-
-    // User endpoints (overridable)
-    getAllUsers: builder.query({
-      query: () => "/users",
-      providesTags: [{ type: "User", id: "LIST" }],
-    }),
-
-    getUserById: builder.query({
-      query: (id: number | string) => `/users/${id}`,
-      providesTags: (result, error, id) => [{ type: "User", id }],
-    }),
-
-    createUserByAdmin: builder.mutation({
-      query: (newUser) => ({
-        url: "/admin/register",
-        method: "POST",
-        body: newUser,
-      }),
-      invalidatesTags: [{ type: "User", id: "LIST" }],
-    }),
-
-    updateUser: builder.mutation({
-      query: ({ id, ...partialUser }) => ({
-        url: `/users/${id}`,
-        method: "PATCH",
-        body: partialUser,
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: "User", id },
-        { type: "User", id: "LIST" },
-      ],
-    }),
-
-    deleteUser: builder.mutation({
-      query: (id: number | string) => ({
-        url: `/users/${id}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: (result, error, id) => [
-        { type: "User", id },
-        { type: "User", id: "LIST" },
+        { type: API_TAGS.Branch, id },
+        { type: API_TAGS.Branch, id: 'LIST' },
       ],
     }),
   }),
@@ -92,9 +57,4 @@ export const {
   useCreateBranchMutation,
   useUpdateBranchMutation,
   useDeleteBranchMutation,
-  useGetAllUsersQuery,
-  useGetUserByIdQuery,
-  useCreateUserByAdminMutation,
-  useUpdateUserMutation,
-  useDeleteUserMutation,
 } = branchApiSlice;

@@ -1,0 +1,605 @@
+// src/app/ui/layout/DashboardLayout.tsx
+'use client'
+
+import React from 'react'
+import { Sidebar } from '@/app/ui/sidebar/sidenav'
+import { SidebarItem } from '@/app/ui/sidebar/sideNavItem'
+import {
+  Home,
+  User2Icon,
+  GitBranchPlusIcon,
+  DollarSign,
+  Settings2,
+  Bell,
+  Lock,
+  Lock as LockIcon,
+  Key,
+  User2,
+  SettingsIcon,
+} from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { useAbility } from '@/context/AbilityContext'
+import { FaMoneyBill } from 'react-icons/fa'
+
+interface SidebarItemType {
+  icon: React.JSX.Element
+  text: string
+  href: string
+  subject: string
+  subItems?: SidebarItemType[]
+  alert?: boolean
+}
+
+function SideBarMain() {
+  const { theme } = useTheme()
+  const ability = useAbility()
+
+  const sidebarItems: SidebarItemType[] = [
+    {
+      icon: <Home />,
+      text: 'Dashboard',
+      href: '/dashboard',
+      subject: 'dashboard',
+      subItems: [
+        { icon: <LockIcon size={15} />, text: 'Invoices', href: '/dashboard/invoices', subject: 'invoices' },
+        { icon: <Key size={15} />, text: 'Customers', href: '/dashboard/customers', subject: 'customers' },
+      ],
+    },
+    {
+      icon: <User2Icon />,
+      text: 'User Management',
+      href: '/users',
+      subject: 'user',
+    },
+    {
+      icon: <GitBranchPlusIcon />,
+      text: 'Branches',
+      href: '/branch',
+      subject: 'branches',
+    },
+    {
+      icon: <DollarSign />,
+      text: 'Saving',
+      href: '/saving',
+      subject: 'saving',
+    },
+    {
+      icon: <FaMoneyBill size={20} />,
+      text: 'Loans',
+      href: '/loan',
+      subject: 'loans',
+    },
+    {
+      icon: <SettingsIcon />,
+      text: 'Settings',
+      subject: 'settings',
+      subItems: [
+        { icon: <User2 size={15} />, text: 'Roles', href: '/roles', subject: 'roles' },
+        { icon: <Key size={15} />, text: 'Permissions', href: '/permissions', subject: 'permissions' },
+      ],
+      href: ''
+    },
+    {
+      icon: <Lock />,
+      text: 'Security',
+      subject: 'security',
+      subItems: [
+        { icon: <LockIcon size={15} />, text: 'Password', href: '/security/password', subject: 'password' },
+        { icon: <Key size={15} />, text: '2FA', href: '/security/2fa', subject: '2fa' },
+      ],
+      href: ''
+    },
+    {
+      icon: <Bell />,
+      text: 'Notifications',
+      href: '/notifications',
+      subject: 'notifications',
+      alert: true,
+    },
+  ]
+
+  const filteredItems = sidebarItems.filter((item) => {
+    const canViewMain = item.subject ? ability.can('view', item.subject) : true
+    const visibleSubItems = item.subItems?.filter((sub) =>
+      sub.subject ? ability.can('view', sub.subject) : true
+    ) || []
+
+    // Update the subItems to be the filtered subItems array or empty
+    item.subItems = visibleSubItems
+
+    return canViewMain || (item.subItems.length > 0)
+  })
+
+  return (
+    <Sidebar>
+      {filteredItems.map((item, index) => (
+        <SidebarItem
+          key={index}
+          icon={item.icon}
+          text={item.text}
+          href={item.href}
+          alert={item.alert}
+          subItems={item.subItems}
+        />
+      ))}
+    </Sidebar>
+  )
+}
+
+export default SideBarMain
+
+'use client';
+import { SidebarProvider } from '@/context/SidebarContext';
+import { TopBar } from '@/app/ui/topbar/TopBar';
+import SideBarMain from '@/app/ui/sidebar/SideBarMain';
+import { AbilityProvider } from '@/context/AbilityContext';
+import { useAuthRedirect, usePermissions } from '@/hooks/authHooks';
+import LoadingSpinner from '@/app/components/LoadingSpinner';
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { isLoading, isAuthenticated } = useAuthRedirect();
+  const { permissions } = usePermissions();
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <AbilityProvider permissions={permissions}>
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+          <SideBarMain />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto pt-8 pb-4 px-4 bg-gray-100 dark:bg-gray-800">
+              {children}
+            </main>
+          </div>
+        </div>
+      </AbilityProvider>
+    </SidebarProvider>
+  );
+}
+// src/hooks/authHooks.ts
+'use client';
+import { useMemo, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Permission } from '@/app/lib/ability';
+
+const DEFAULT_PERMISSIONS: Permission[] = [
+  { action: 'view', subject: 'dashboard' },
+  { action: 'view', subject: 'profile' }
+];
+
+// 1. Hook for authentication status and redirect
+export const useAuthRedirect = (requiredAuth = true) => {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (requiredAuth && status === 'unauthenticated') {
+      router.push('/auth/login');
+    }
+  }, [status, requiredAuth, router]);
+
+  return {
+    isAuthenticated: status === 'authenticated',
+    isLoading: status === 'loading',
+    session
+  };
+};
+
+// 2. Hook for permission management
+export const usePermissions = () => {
+  const { data: session } = useSession();
+
+  const permissions = useMemo(() => {
+    if (session?.user) {
+      const userPermissions: Permission[] = [];
+      const uniquePermissions = new Set<string>();
+      
+      session.user.roles?.forEach(role => {
+        role.permissions?.forEach(permissionString => {
+          const permission = convertBackendPermission(permissionString);
+          const permissionKey = `${permission.action}_${permission.subject}`;
+          
+          if (!uniquePermissions.has(permissionKey)) {
+            uniquePermissions.add(permissionKey);
+            userPermissions.push(permission);
+          }
+        });
+      });
+
+      DEFAULT_PERMISSIONS.forEach(defaultPerm => {
+        const defaultKey = `${defaultPerm.action}_${defaultPerm.subject}`;
+        if (!uniquePermissions.has(defaultKey)) {
+          userPermissions.push(defaultPerm);
+        }
+      });
+
+      return userPermissions;
+    }
+    return DEFAULT_PERMISSIONS;
+  }, [session]);
+
+  const hasPermission = (action: string, subject: string) => {
+    return permissions.some(p => p.action === action && p.subject === subject);
+  };
+
+  return { permissions, hasPermission };
+};
+
+// 3. Hook for user data
+export const useUserData = () => {
+  const { data: session } = useSession();
+  
+  return {
+    user: session?.user,
+    roles: session?.user?.roles || [],
+    isLoading: !session
+  };
+};
+
+// 4. Specialized hook for common permission checks
+export const useCommonPermissions = () => {
+  const { hasPermission } = usePermissions();
+  
+  return {
+    canViewDashboard: hasPermission('view', 'dashboard'),
+    canManageUsers: hasPermission('manage', 'users'),
+    canManageRoles: hasPermission('manage', 'roles'),
+    canViewSettings: hasPermission('view', 'settings')
+  };
+};
+
+// Maintain your existing permission conversion function
+function convertBackendPermission(permissionString: string): Permission {
+  const actionMap: Record<string, string> = {
+    add: 'create',
+    create: 'create',
+    edit: 'update',
+    update: 'update',
+    delete: 'delete',
+    remove: 'delete',
+    view: 'view',
+    assign: 'manage',
+    detail: 'view'
+  };
+
+  const subjectMap: Record<string, string> = {
+    user: 'user',
+    role: 'roles',
+    permission: 'permissions',
+    notification: 'notifications',
+    saving: 'saving',
+    loan: 'loans',
+    branch: 'branches',
+    dashboard: 'dashboard',
+    setting: 'settings',
+    invoice: 'invoices'
+  };
+
+  const conditionalPermissions: Record<string, any> = {
+    assign_roles_to_users: { canAssignRoles: true },
+    assign_permission_to_roles: { canManagePermissions: true }
+  };
+
+  const parts = permissionString.split('_');
+  let actionPart = parts[0];
+  let subjectPart = parts[parts.length - 1];
+
+  if (permissionString === 'remove_permission') {
+    actionPart = 'delete';
+    subjectPart = 'permissions';
+  }
+
+  const action = actionMap[actionPart] || 'view';
+  const subject = subjectMap[subjectPart] || subjectPart;
+  const conditions = conditionalPermissions[permissionString];
+
+  return conditions 
+    ? { action, subject, conditions } 
+    : { action, subject };
+}
+since must be the same as my express backend permistion  i want to set permistion for each routes  and register in data base role 
+now let me give the backend 
+ const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
+const { encryptData, decryptData } = require("../utils/cryptoUtils");
+
+const User = sequelize.define(
+  "User",
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      allowNull: false,
+      primaryKey: true,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      set(value) {
+        this.setDataValue("firstName", encryptData(value));
+      },
+      get() {
+        return decryptData(this.getDataValue("firstName"));
+      },
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      set(value) {
+        this.setDataValue("lastName", encryptData(value));
+      },
+      get() {
+        return decryptData(this.getDataValue("lastName"));
+      },
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      set(value) {
+        this.setDataValue("email", encryptData(value.toLowerCase())); // Store as lowercase
+      },
+      get() {
+        return decryptData(this.getDataValue("email"));
+      },
+    },
+    phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true, // Allowing null values
+      unique: true,
+      set(value) {
+        if (value) {
+          // Encrypt phone number before saving to database
+          this.setDataValue("phoneNumber", encryptData(value));
+        } else {
+          // If phone number is null, just set null
+          this.setDataValue("phoneNumber", null);
+        }
+      },
+      get() {
+        const encryptedPhoneNumber = this.getDataValue("phoneNumber");
+        if (encryptedPhoneNumber) {
+          // Decrypt phone number when retrieving it
+          return decryptData(encryptedPhoneNumber);
+        }
+        return null; // Return null if phoneNumber is not set
+      },
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    provider: {
+      type: DataTypes.STRING,
+      allowNull: true, // Can be null if the user registers manually
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: true, // Can be null if the user registers manually
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+module.exports = User;
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
+
+const Permission = sequelize.define("Permission", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: { type: DataTypes.STRING, unique: true, allowNull: false },
+});
+
+module.exports = Permission;
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
+const Role = require("./roleModel");
+const Permission = require("./permissionModel");
+
+const RolePermission = sequelize.define("RolePermission", {
+  role_id: { type: DataTypes.INTEGER, references: { model: Role, key: "id" } },
+  permission_id: { type: DataTypes.INTEGER, references: { model: Permission, key: "id" } },
+});
+
+Role.belongsToMany(Permission, { through: RolePermission, foreignKey: "role_id", as: "permissions" });
+Permission.belongsToMany(Role, { through: RolePermission, foreignKey: "permission_id", as: "roles" });
+
+module.exports = RolePermission;
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
+
+const Role = sequelize.define("Role", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: { type: DataTypes.STRING, unique: true, allowNull: false },
+});
+
+module.exports = Role;
+const jwt = require("jsonwebtoken");
+const User = require("../models/userModel");
+const Role = require("../models/roleModel");
+const UserRole = require("../models/userRoleModel");
+const Permission = require("../models/permissionModel");
+const RolePermission = require("../models/rolePermissionModel");
+require("dotenv").config();
+
+// Authentication middleware
+const authenticate = async (req, res, next) => {
+  try {
+    const token = req.header("Authorization")?.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized - No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findByPk(decoded.id, {
+      include: [
+        {
+          model: Role,
+          as: 'Roles',
+          through: UserRole,
+          include: [
+            {
+              model: Permission,
+              as: 'permissions',
+              through: RolePermission,
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized - User not found" });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      roles: user.Roles.map((role) => role.name),
+      permissions: user.Roles.flatMap((role) => 
+        role.permissions ? role.permissions.map((perm) => perm.name) : []
+      ),
+    };
+
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+// Role-based authorization
+const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.roles.some((role) => allowedRoles.includes(role))) {
+      return res.status(403).json({ message: "Forbidden - Access denied" });
+    }
+    next();
+  };
+};
+
+// Permission-based authorization
+const authorizePermissions = (...requiredPermissions) => {
+  return (req, res, next) => {
+    if (!req.user || !requiredPermissions.some(perm => req.user.permissions.includes(perm))) {
+      return res.status(403).json({ message: "Forbidden - Permission denied" });
+    }
+    next();
+  };
+};
+
+// Enhanced ownership check with permission support
+const authorizeOwnership = (resourceType, options = {}) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.id;
+      const resourceId = req.params.id || req.params.userId;
+      
+      // Get the resource model
+      const model = require(`../models/${resourceType}Model`);
+      const resource = await model.findByPk(resourceId);
+      
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+
+      // Check if user owns the resource
+      const isOwner = resource.userId === userId;
+      
+      // Check if user has permission to manage others
+      const canManageOthers = req.user.permissions.some(perm => 
+        perm === `${resourceType}.manage.others` || 
+        perm === `${resourceType}.${options.action}.others`
+      );
+
+      // Check admin role if needed
+      const isAdmin = req.user.roles.includes('Admin');
+
+      // Allow if owner, admin, or has permission to manage others
+      if (isOwner || isAdmin || canManageOthers) {
+        req.resource = resource;
+        return next();
+      }
+
+      return res.status(403).json({ message: "Forbidden - Ownership or special permission required" });
+    } catch (error) {
+      console.error("Ownership check error:", error);
+      next(error);
+    }
+  };
+};
+
+// Comprehensive authorization middleware
+const authorize = (options = {}) => {
+  return async (req, res, next) => {
+    try {
+      // Check permissions if specified
+      if (options.permissions) {
+        const hasPermission = options.permissions.some(perm => 
+          req.user.permissions.includes(perm)
+        );
+        
+        if (!hasPermission) {
+          return res.status(403).json({ message: "Forbidden - Permission denied" });
+        }
+      }
+
+      // Check ownership if required
+      if (options.checkOwnership) {
+        const resource = await options.getResource(req);
+        if (!resource) {
+          return res.status(404).json({ message: "Resource not found" });
+        }
+
+        const isOwner = resource.userId === req.user.id;
+        const canManageOthers = options.permissions?.some(perm => {
+          const [resourceType, action] = perm.split('.');
+          return req.user.permissions.includes(`${resourceType}.${action}.others`);
+        });
+
+        if (!isOwner && !canManageOthers) {
+          return res.status(403).json({ message: "Forbidden - Ownership required" });
+        }
+
+        req.resource = resource;
+      }
+
+      next();
+    } catch (error) {
+      console.error("Authorization error:", error);
+      next(error);
+    }
+  };
+};
+
+module.exports = {
+  authenticate,
+  authorizeRoles,
+  authorizePermissions,
+  authorizeOwnership,
+  authorize
+};
+
+now i want to set pemistion each menu and routes and save to database permistion 
+and one condition in this user consier as one role in that role theier permistion that can be added the fronend is done now   do like insludeing . the nagivation and prorection and routes from my frontend   

@@ -7,7 +7,7 @@ import {
 } from "react-icons/fi";
 import NewUserRegistrationForm from "./addUserForm";
 import { useGetAllUsersQuery } from "@/redux/api/adminApiSlice";
-import { User, UserRole } from "@/app/types/user";
+import { User } from "@/app/types/user";
 import Link from "next/link";
 import Modal from "./newUserModel";
 import Pagination from "../pagination";
@@ -15,9 +15,15 @@ import { MdDetails, MdMore } from "react-icons/md";
 import GenerateAccountNumber from "../Accounts/GenerateAccountNumber";
 import CreateSavingAccount from "../Accounts/CreateSavingAccount";
 import { useGetAllSavingTypeQuery } from "@/redux/api/settingApiSlice";
-import { useGetAllRoleQuery } from "@/redux/api/rolePermissionApiSlice";
 import { useAssignRoleTouserMutation } from "@/redux/api/userApiSlice";
 import { toast } from "react-toastify";
+import { format } from "date-fns";
+
+type UserRole = "Customer" | "Admin" | "LoanOfficer" | "Accountant";
+
+interface RoleOption {
+  name: UserRole;
+}
 
 export default function UsersTable() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,6 +40,7 @@ export default function UsersTable() {
   const [showRoleDropdown, setShowRoleDropdown] = useState<string | null>(null);
   const [assignRole] = useAssignRoleTouserMutation();
   const dropdownRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+  const [selectedRow, setSelectedRow] = useState<string | null>(null);
 
   // Account generation states
   const [showGenerateAccountModal, setShowGenerateAccountModal] = useState(false);
@@ -42,7 +49,7 @@ export default function UsersTable() {
   const [generatedAccountNumber, setGeneratedAccountNumber] = useState<any>(null);
 
   const { 
-    data: usersData, 
+    data: usersData = [], 
     isLoading, 
     isError, 
     isFetching, 
@@ -52,8 +59,14 @@ export default function UsersTable() {
   });
 
   const { data: savingTypes = [] } = useGetAllSavingTypeQuery();
-  const { data: allRoleData = [],isLoading:roleLoading } = useGetAllRoleQuery();
-const allRoles=allRoleData?.roles;
+
+  const allRoles: RoleOption[] = [
+    { name: 'Customer' },
+    { name: 'Admin' },
+    { name: 'LoanOfficer' },
+    { name: 'Accountant' }
+  ];
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -75,7 +88,7 @@ const allRoles=allRoleData?.roles;
     key: keyof User; 
     direction: 'asc' | 'desc' 
   }>({
-    key: 'fullName',
+    key: 'firstName',
     direction: 'asc'
   });
 
@@ -84,21 +97,22 @@ const allRoles=allRoleData?.roles;
     if (storedColor) setPrimaryColor(storedColor);
   }, []);
 
-  // Handle successful account number generation
+  const handleRowClick = (userId: string) => {
+    setSelectedRow(selectedRow === userId ? null : userId);
+  };
+
   const handleAccountNumberGenerated = (accountNumber: any) => {
     setGeneratedAccountNumber(accountNumber);
     setShowGenerateAccountModal(false);
     setShowCreateAccountModal(true);
   };
 
-  // Handle successful account creation
   const handleAccountCreated = () => {
     setShowCreateAccountModal(false);
     setGeneratedAccountNumber(null);
     toast.success('Account created successfully!');
   };
 
-  // Event handlers
   const handleUserCreated = () => {
     setIsModalOpen(false);
     setIsProcessing(false);
@@ -140,45 +154,34 @@ const allRoles=allRoleData?.roles;
     setShowRoleDropdown(showRoleDropdown === userId ? null : userId);
   };
 
-  const handleRoleChange = async (userId: string, roleId: string) => {
+  const handleRoleChange = async (userId: string, roleName: UserRole) => {
     try {
-      await assignRole({
+      const response = await assignRole({
         userId,
-        roleId: parseInt(roleId)
+        roleName
       }).unwrap();
       
-      toast.success("Role updated successfully!");
+      toast.success(response.message || "Role updated successfully!");
       refetch();
-    } catch (error) {
-      toast.error("Failed to update role");
+    } catch (error: any) {
+      toast.error(
+        error.data?.message || 
+        error.message || 
+        "Failed to update role"
+      );
       console.error("Role update error:", error);
     } finally {
       setShowRoleDropdown(null);
     }
   };
 
-  // Data transformation
-  const users = (usersData?.users || []).map(user => ({
-    id: user.id || '',
-    fullName: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
-    phoneNumber: user.phoneNumber || 'Not provided',
-    email: user.email || 'No email',
-    isVerified: user.isVerified ?? false,
-    role: (user.roles?.[0]?.name || 'User') as UserRole,
-    roleId: user.roles?.[0]?.id || 0,
-    isActive: user.isActive ?? false,
-    createdAt: user.createdAt || new Date().toISOString(),
-    updatedAt: user.updatedAt || new Date().toISOString(),
-    avatar: user.avatar,
-    lastLogin: user.lastLogin
-  }));
-
   // Filter and search logic
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = usersData.filter(user => {
+    const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
     const matchesSearch = 
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fullName.includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      (user.phoneNumber && user.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesRole = filters.role ? user.role === filters.role : true;
     const matchesStatus = filters.status ? 
@@ -205,71 +208,45 @@ const allRoles=allRoleData?.roles;
   const currentItems = sortedUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
 
-  // Dynamic badge styles using primaryColor
   const getStatusBadge = (isActive: boolean) => {
-    const baseClasses = "px-2.5 py-1 rounded-full text-xs font-medium";
-    
     return isActive ? (
-      <span 
-        className={`${baseClasses}`}
-        style={{
-          backgroundColor: `${primaryColor}20`,
-          color: primaryColor,
-          border: `1px solid ${primaryColor}`
-        }}
-      >
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         Active
       </span>
     ) : (
-      <span 
-        className={`${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`}
-      >
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
         Inactive
       </span>
     );
   };
 
   const getVerificationBadge = (isVerified: boolean) => {
-    const baseClasses = "px-2.5 py-1 rounded-full text-xs font-medium";
-    
     return isVerified ? (
-      <span 
-        className={`${baseClasses}`}
-        style={{
-          backgroundColor: `${primaryColor}20`,
-          color: primaryColor,
-          border: `1px solid ${primaryColor}`
-        }}
-      >
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
         Verified
       </span>
     ) : (
-      <span 
-        className={`${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200`}
-      >
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
         Unverified
       </span>
     );
   };
 
-  const getRoleBadge = (role: UserRole = 'User') => {
+  const getRoleBadge = (role: UserRole) => {
     const roleColors = {
-      Admin: { bg: 'bg-purple-100', text: 'text-purple-800', darkBg: 'dark:bg-purple-900', darkText: 'dark:text-purple-200' },
-      Editor: { bg: 'bg-blue-100', text: 'text-blue-800', darkBg: 'dark:bg-blue-900', darkText: 'dark:text-blue-200' },
-      User: { bg: 'bg-gray-100', text: 'text-gray-800', darkBg: 'dark:bg-gray-700', darkText: 'dark:text-gray-300' },
-      Guest: { bg: 'bg-orange-100', text: 'text-orange-800', darkBg: 'dark:bg-orange-900', darkText: 'dark:text-orange-200' }
+      Admin: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      Customer: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      LoanOfficer: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      Accountant: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
     };
     
-    const colors = roleColors[role] || roleColors.User;
-    
     return (
-      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.darkBg} ${colors.darkText}`}>
+      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColors[role]}`}>
         {role}
       </span>
     );
   };
 
-  // Loading and error states
   if (isLoading || isFetching) return (
     <div className="p-4 text-center">
       <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -285,20 +262,18 @@ const allRoles=allRoleData?.roles;
   );
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 py-6">
       {/* Header, Search and Filters */}
-      <div className="flex flex-col gap-4 mb-4">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">User Management</h1>
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90"
-            variant="primary"
             style={{ 
               backgroundColor: primaryColor,
-              color:'white',
-              '--primary-hover': `${primaryColor}E6`
-            } as React.CSSProperties}
+              color: 'white'
+            }}
           >
             <FiUserPlus className="text-lg" />
             <span>Add New User</span>
@@ -329,11 +304,11 @@ const allRoles=allRoleData?.roles;
               name="role"
               value={filters.role}
               onChange={handleFilterChange}
-              className="pl-10 w-full rounded-md border shadow-sm dark:text-white"
+              className="pl-10 w-full rounded-md border shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Roles</option>
-              {allRoles?.map((role) => (
-                <option key={role.id} value={role.name}>{role.name}</option>
+              {allRoles.map((role) => (
+                <option key={role.name} value={role.name}>{role.name}</option>
               ))}
             </select>
           </div>
@@ -347,7 +322,7 @@ const allRoles=allRoleData?.roles;
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
-              className="pl-10 w-full rounded-md border shadow-sm dark:text-white"
+              className="pl-10 w-full rounded-md border shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -364,7 +339,7 @@ const allRoles=allRoleData?.roles;
               name="verification"
               value={filters.verification}
               onChange={handleFilterChange}
-              className="pl-10 w-full rounded-md border shadow-sm dark:text-white"
+              className="pl-10 w-full rounded-md border shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Verifications</option>
               <option value="verified">Verified</option>
@@ -379,9 +354,8 @@ const allRoles=allRoleData?.roles;
             style={{ 
               backgroundColor: `${primaryColor}20`,
               color: primaryColor,
-              borderColor: primaryColor,
-              '--primary-hover': `${primaryColor}30`
-            } as React.CSSProperties}
+              border: `1px solid ${primaryColor}`
+            }}
           >
             Reset Filters
           </button>
@@ -397,11 +371,11 @@ const allRoles=allRoleData?.roles;
                 <th 
                   scope="col" 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                  onClick={() => requestSort('fullName')}
+                  onClick={() => requestSort('firstName')}
                 >
                   <div className="flex items-center">
                     User
-                    {sortConfig.key === 'fullName' && (
+                    {sortConfig.key === 'firstName' && (
                       <span className="ml-1">
                         {sortConfig.direction === 'asc' ? <FiChevronUp /> : <FiChevronDown />}
                       </span>
@@ -417,33 +391,11 @@ const allRoles=allRoleData?.roles;
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Verification
                 </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                  onClick={() => requestSort('isActive')}
-                >
-                  <div className="flex items-center">
-                    Status
-                    {sortConfig.key === 'isActive' && (
-                      <span className="ml-1">
-                        {sortConfig.direction === 'asc' ? <FiChevronUp /> : <FiChevronDown />}
-                      </span>
-                    )}
-                  </div>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
                 </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                  onClick={() => requestSort('role')}
-                >
-                  <div className="flex items-center">
-                    Role
-                    {sortConfig.key === 'role' && (
-                      <span className="ml-1">
-                        {sortConfig.direction === 'asc' ? <FiChevronUp /> : <FiChevronDown />}
-                      </span>
-                    )}
-                  </div>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Role
                 </th>
                 <th 
                   scope="col" 
@@ -467,12 +419,18 @@ const allRoles=allRoleData?.roles;
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {currentItems.length > 0 ? (
                 currentItems.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <tr 
+                    key={user.id} 
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      selectedRow === user.id ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                    onClick={() => handleRowClick(user.id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {user.fullName}
+                            {user.firstName} {user.lastName}
                           </div>
                         </div>
                       </div>
@@ -489,7 +447,7 @@ const allRoles=allRoleData?.roles;
                       <div className="flex items-center">
                         <FiPhone className="text-gray-400 mr-2" size={14} />
                         <span className="text-sm text-gray-900 dark:text-white">
-                          {user.phoneNumber}
+                          {user.phoneNumber || 'Not provided'}
                         </span>
                       </div>
                     </td>
@@ -502,43 +460,57 @@ const allRoles=allRoleData?.roles;
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="relative" ref={el => dropdownRefs.current[user.id] = el}>
                         <button
-                          onClick={() => toggleRoleDropdown(user.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRoleDropdown(user.id);
+                          }}
                           className="h-8 w-full flex items-center justify-between px-2 rounded-md border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600"
                         >
-                          {getRoleBadge(user.role)}
+                          {getRoleBadge(user.role as UserRole)}
                           <FiChevronDown className="ml-1 h-4 w-4" />
                         </button>
                         
                         {showRoleDropdown === user.id && (
                           <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg dark:bg-gray-700 dark:border dark:border-gray-600">
                             <div className="py-1">
-                              {allRoles?.map((role) => (
-                                <button
-                                  key={role.id}
-                                  onClick={() => handleRoleChange(user.id, role.id.toString())}
-                                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${user.roleId === role.id ? "bg-gray-100 dark:bg-gray-600" : "hover:bg-gray-50 dark:hover:bg-gray-600"}`}
-                                >
-                                  {role.name}
-                                  {user.roleId === role.id && (
-                                    <FiCheck className="ml-2 h-4 w-4" />
-                                  )}
-                                </button>
-                              ))}
+                              {allRoles
+                                .filter(role => role.name !== user.role)
+                                .map((role) => (
+                                  <button
+                                    key={role.name}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRoleChange(user.id, role.name);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+                                  >
+                                    {role.name}
+                                  </button>
+                                ))}
                             </div>
                           </div>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {format(new Date(user.createdAt), 'MMM dd, yyyy')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <td 
+                      className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Link
-                        href={`/users/${user.id}/profile-detail`}
-                        className="inline-flex items-center transition-colors hover:opacity-80"
-                        style={{ color: primaryColor }}
-                      >
-                        <MdMore className="mr-1" size={14} />
+  href={{
+    pathname: `/users/${user.id}/profile-detail`,
+    query: { 
+      userId: user.id,
+      userData: JSON.stringify(user) 
+    }
+    
+  }}
+  style={{color:primaryColor,diplay:'flex'}}
+>
+                        {/* <MdMore className="mr-1" size={14} /> */}
                         More
                       </Link>
                       <button
@@ -546,7 +518,7 @@ const allRoles=allRoleData?.roles;
                           setSelectedUserId(user.id);
                           setShowGenerateAccountModal(true);
                         }}
-                        className="inline-flex items-center transition-colors hover:opacity-80 text-blue-600"
+                        className="inline-flex items-center transition-colors hover:opacity-80 text-blue-600 dark:text-blue-400"
                       >
                         <FiDollarSign className="mr-1" size={14} />
                         Create Account

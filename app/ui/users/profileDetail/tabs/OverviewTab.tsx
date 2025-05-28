@@ -99,13 +99,30 @@ setLocalProfileInfo(profileinfo);
     console.log("local",localProfileInfo)
   }
 
-  if ( !userData) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500">
-        No profile data available
-      </div>
-    );
-  }
+ if (!userData) {
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500 space-y-4">
+      <p>No profile data available.</p>
+      <button
+        onClick={() => setShowProfileForm(true)}
+        className="inline-flex items-center px-4 py-2 border border-amber-500 text-amber-700 rounded-lg bg-amber-50 hover:bg-amber-100 transition-all"
+      >
+        <FiEdit className="mr-2" />
+        Add User Information
+      </button>
+
+      {showProfileForm && (
+        <ProfileFormModal
+          onClose={() => setShowProfileForm(false)}
+          onSubmit={handleProfileSubmit}
+          userId={userId}
+          primaryColor={primaryColor}
+        />
+      )}
+    </div>
+  );
+}
+
 
   const isProfileComplete = localProfileInfo?.profileCompleted;
   {console.log("profile console.log",localProfileInfo?.profileCompleted)}
@@ -141,7 +158,7 @@ setLocalProfileInfo(profileinfo);
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-800">
-                      {userData?.user?.firstName} {userData?.user?.lastName}{" "}
+                      {userData?.firstName} {userData?.lastName}{" "}
                       <VerificationBadge
                         verified={localProfileInfo?.identityVerified}
                         text={
@@ -169,17 +186,17 @@ setLocalProfileInfo(profileinfo);
                 <div className="flex flex-wrap gap-x-6 gap-y-3 mt-1 text-sm">
                   <div className="flex items-center text-gray-600">
                     <FiMail className="mr-2 text-gray-500" />
-                    <span>{userData?.user?.email}</span>
+                    <span>{userData?.email}</span>
                   </div>
 
                   <div className="flex items-center text-gray-600">
                     <FiPhone className="mr-2 text-gray-500" />
-                    <span>{userData?.user?.phoneNumber}</span>
+                    <span>{userData?.phoneNumber}</span>
                   </div>
 
                   <div className="flex items-center text-gray-600">
                     <FiCalendar className="mr-2 text-gray-500" />
-                    <span>Joined {formatDate(userData?.user?.createdAt)}</span>
+                    <span>Joined {formatDate(userData?.createdAt)}</span>
                   </div>
                 </div>
               </div>
@@ -557,7 +574,7 @@ setLocalProfileInfo(profileinfo);
         userId={userId}
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
-        userData={userData?.user}
+        userData={userData}
         primaryColor={primaryColor}
       />
    {dialogOpenedit && (
