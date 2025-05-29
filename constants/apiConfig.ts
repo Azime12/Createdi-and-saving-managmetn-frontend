@@ -1,4 +1,4 @@
-export const BASE_URL = "https://savksfj.nsldtms.com/api"
+export const BASE_URL ="https://newcreditbackend.onrender.com/api"
 
 
 // export const BASE_URL = "http://localhost:5000/api"; // Replace with your API URL
